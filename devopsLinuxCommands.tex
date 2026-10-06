@@ -1,0 +1,402 @@
+\chapter{Linux Commands}
+\ChapterLabel{LinuxCommands}
+\index{Linux}
+\index{Linux!command line}
+\index{shell scripting}
+\index{evidence}
+
+\section{Overview}
+This chapter is the evidence record for the Linux Command Proficiency
+problem set. A shared, disposable working directory (\texttt{\textasciitilde/lx-test})
+was created on a course-provided Linux sandbox (host \texttt{lima-linuxclass},
+Ubuntu userland, kernel \texttt{6.8.0-134-generic}, \texttt{aarch64}), seeded with
+fixture files, and every graded command was executed interactively and
+captured verbatim with the \texttt{script} utility. Section~\ref{Section:LinuxSetup}
+reproduces the environment-setup transcript; Section~\ref{Section:LinuxSolutions}
+walks through each problem-set question with the exact command used and its
+captured terminal output.
+
+\subsection{Team Contributions}
+\begin{tabularx}{\linewidth}{L{4.0cm}Y}
+\toprule \textbf{Member} & \textbf{Contribution}\\ \midrule
+Rifat Rahman Khan (RRK) & Ran the environment-setup and problem-set commands on his machine and captured the terminal-session evidence used throughout this chapter.\\
+Deanna Gaber (DMG) & Reviewed and verified the problem-set answers against the captured evidence, and compiled and assembled this Overleaf report.\\ \bottomrule
+\end{tabularx}
+
+\section{Environment Setup}
+\label{Section:LinuxSetup}
+The fixture files and directories used throughout this chapter were created
+once, in a fresh working directory, with the commands below. All of these
+commands are silent on success (they create files/directories without
+printing anything), which is the expected, correct behavior; the resulting
+directory listing is confirmed as the first item of Section~\ref{Section:LinuxSolutions}.
+
+\begin{lstlisting}[language=bash,caption={Environment setup transcript: creating the working directory and fixture files under \texttt{\textasciitilde/lx-test}.},label={Listing:LinuxSetup}]
+$ mkdir -p ~/lx-test && cd ~/lx-test
+$ printf "alpha\nbeta\nGamma\ngamma\nbeta\n" > words.txt
+$ printf "id,name,dept\n1,Ada,EE\n2,Linus,CS\n3,Grace,EE\n4,Dennis,CS\n" > people.csv
+$ printf "INFO boot ok\nWARN disk low\nERROR fan fail\nINFO shutdown\n" > sys.log
+$ dd if=/dev/zero of=blob.bin bs=1K count=48 status=none
+$ mkdir -p src/lib tmp archive
+$ printf "one two three four\n" > src/file1.txt
+$ printf "two three four five\n" > src/file2.txt
+$ ln -s src/file1.txt link-to-file1
+$ touch -t 202401020304 old.txt
+\end{lstlisting}
+
+\section{Problem Set Solutions}
+\label{Section:LinuxSolutions}
+Each command below was run, in order, from \texttt{\textasciitilde/lx-test} in a single
+continuous terminal session immediately after the setup in Section~\ref{Section:LinuxSetup};
+the captured input and output are reproduced as they appeared on the terminal.
+
+\subsection{Part A: Navigation \& File Ops}
+\paragraph{Q1.} Show your present working directory path only.
+\begin{lstlisting}[language=bash,caption={Q1 evidence: \texttt{pwd}},label={Listing:Q1}]
+$ pwd
+/home/lima.guest/lx-test
+\end{lstlisting}
+\texttt{pwd} prints the absolute path of the shell's current working directory and nothing else, satisfying "path only."
+
+\paragraph{Q2.} List all entries in the current directory, one per line, including dotfiles.
+\begin{lstlisting}[language=bash,caption={Q2 evidence: \texttt{ls -1a}},label={Listing:Q2}]
+$ ls -1a
+.
+..
+archive
+blob.bin
+link-to-file1
+old.txt
+people.csv
+src
+sys.log
+tmp
+words.txt
+\end{lstlisting}
+The \texttt{-1} flag forces one entry per line and \texttt{-a} includes dotfiles (\texttt{.} and \texttt{..}), which are otherwise hidden.
+
+\paragraph{Q3.} Copy src/file1.txt to tmp/ only if tmp exists; do it verbosely.
+\begin{lstlisting}[language=bash,caption={Q3 evidence: \texttt{[ -d tmp ] \&\& cp -v src/file1.txt tmp/}},label={Listing:Q3}]
+$ [ -d tmp ] && cp -v src/file1.txt tmp/
+'src/file1.txt' -> 'tmp/file1.txt'
+\end{lstlisting}
+The \texttt{[ -d tmp ]} test guards the copy so it only runs when the \texttt{tmp} directory exists; \texttt{cp -v} reports the copy that was performed.
+
+\paragraph{Q4.} Move old.txt into archive/ and keep its original timestamp.
+\begin{lstlisting}[language=bash,caption={Q4 evidence: \texttt{mv old.txt archive/}},label={Listing:Q4}]
+$ mv old.txt archive/
+\end{lstlisting}
+\texttt{mv} renames/relocates a file without touching its inode's modification timestamp, so \texttt{archive/old.txt} keeps the \texttt{touch -t 202401020304} timestamp set during environment setup. No output is printed on success, which is expected \texttt{mv} behavior.
+
+\paragraph{Q5.} Create a new empty file notes.md only if it doesn't already exist.
+\begin{lstlisting}[language=bash,caption={Q5 evidence: \texttt{[ -e notes.md ] || touch notes.md}},label={Listing:Q5}]
+$ [ -e notes.md ] || touch notes.md
+\end{lstlisting}
+The \texttt{||} short-circuits: \texttt{touch} only runs when the existence test \texttt{[ -e notes.md ]} fails, i.e.\ the file is not yet present. This avoids clobbering the modification time of a pre-existing file.
+
+\paragraph{Q6.} Show disk usage (human-readable) for the src directory only (not total FS).
+\begin{lstlisting}[language=bash,caption={Q6 evidence: \texttt{du -sh src}},label={Listing:Q6}]
+$ du -sh src
+16K	src
+\end{lstlisting}
+\texttt{-s} summarizes a single total for the \texttt{src} directory (rather than every file within it) and \texttt{-h} scales the size to a human-readable unit (KiB/MiB/etc.) instead of raw block counts.
+
+\subsection{Part B: Viewing \& Searching}
+\paragraph{Q7.} Print line numbers while displaying sys.log.
+\begin{lstlisting}[language=bash,caption={Q7 evidence: \texttt{cat -n sys.log}},label={Listing:Q7}]
+$ cat -n sys.log
+     1	INFO boot ok
+     2	WARN disk low
+     3	ERROR fan fail
+     4	INFO shutdown
+\end{lstlisting}
+\texttt{cat -n} numbers every output line, including blank ones, while printing the file contents.
+
+\paragraph{Q8.} Show only the lines in sys.log that contain ERROR (case-sensitive).
+\begin{lstlisting}[language=bash,caption={Q8 evidence: \texttt{grep 'ERROR' sys.log}},label={Listing:Q8}]
+$ grep 'ERROR' sys.log
+ERROR fan fail
+\end{lstlisting}
+\texttt{grep} performs a case-sensitive substring match by default, so only the line containing the exact token \texttt{ERROR} is printed.
+
+\paragraph{Q9.} Count how many distinct words appear in words.txt (case-insensitive).
+\begin{lstlisting}[language=bash,caption={Q9 evidence: \texttt{sort -fu words.txt | wc -l}},label={Listing:Q9}]
+$ sort -fu words.txt | wc -l
+3
+\end{lstlisting}
+\texttt{sort -f} folds case for comparison purposes and \texttt{-u} removes duplicates under that case-insensitive ordering, collapsing \texttt{Gamma}/\texttt{gamma} and the two \texttt{beta} lines; \texttt{wc -l} then counts the three remaining distinct words (\texttt{alpha}, \texttt{beta}, \texttt{Gamma}/\texttt{gamma}).
+
+\paragraph{Q10.} From words.txt, show lines that start with g or G.
+\begin{lstlisting}[language=bash,caption={Q10 evidence: \texttt{grep -i '\textasciicircum{}g' words.txt}},label={Listing:Q10}]
+$ grep -i '^g' words.txt
+Gamma
+gamma
+\end{lstlisting}
+The anchor \texttt{\^{}g} matches only at the start of a line, and \texttt{-i} makes the match case-insensitive so both \texttt{Gamma} and \texttt{gamma} are returned.
+
+\paragraph{Q11.} Display the first 2 lines of people.csv without using an editor.
+\begin{lstlisting}[language=bash,caption={Q11 evidence: \texttt{head -n 2 people.csv}},label={Listing:Q11}]
+$ head -n 2 people.csv
+id,name,dept
+1,Ada,EE
+\end{lstlisting}
+\texttt{head -n 2} prints only the first two lines of the file directly to the terminal, which satisfies "without using an editor."
+
+\paragraph{Q12.} Show the last 3 lines of sys.log and keep following if the file grows.
+\begin{lstlisting}[language=bash,caption={Q12 evidence: \texttt{tail -n 3 -f sys.log}},label={Listing:Q12}]
+$ tail -n 3 -f sys.log
+WARN disk low
+ERROR fan fail
+INFO shutdown
+^C
+\end{lstlisting}
+\texttt{tail -n 3} prints the last three lines and \texttt{-f} keeps the file open, streaming any lines appended afterward; the command was interrupted with \texttt{Ctrl+C} (shown as \texttt{\^{}C}) once the behavior was demonstrated, since \texttt{sys.log} was not being appended to in this exercise.
+
+\subsection{Part C: Text Processing}
+\paragraph{Q13.} From people.csv, print only the name column (2nd), excluding the header.
+\begin{lstlisting}[language=bash,caption={Q13 evidence: \texttt{awk -F',' 'NR > 1 \{print \$2\}' people.csv}},label={Listing:Q13}]
+$ awk -F',' 'NR > 1 {print $2}' people.csv
+Ada
+Linus
+Grace
+Dennis
+\end{lstlisting}
+\texttt{-F','} sets the field separator to a comma; the \texttt{NR > 1} condition skips the header row (record number 1) before printing field \texttt{\$2}, the name column.
+
+\paragraph{Q14.} Sort words.txt case-insensitively and remove duplicates.
+\begin{lstlisting}[language=bash,caption={Q14 evidence: \texttt{sort -fu words.txt}},label={Listing:Q14}]
+$ sort -fu words.txt
+alpha
+beta
+Gamma
+\end{lstlisting}
+As in Q9, \texttt{-f} folds case for the sort comparison and \texttt{-u} drops duplicates found under that fold, leaving one representative spelling for each of the three distinct words in sorted order.
+
+\paragraph{Q15.} Replace every three with 3 in all files under src/ in-place, creating .bak backups.
+\begin{lstlisting}[language=bash,caption={Q15 evidence: \texttt{find src -type f ! -name '*.bak' -exec sed -i.bak 's/three/3/g' \{\} +}},label={Listing:Q15}]
+$ find src -type f ! -name '*.bak' -exec sed -i.bak 's/three/3/g' {} +
+\end{lstlisting}
+\texttt{find} locates every regular file under \texttt{src/} while excluding any file that already ends in \texttt{.bak} (so re-runs do not edit the backups); \texttt{sed -i.bak} edits each matched file in place after saving the original with a \texttt{.bak} suffix, replacing every occurrence of \texttt{three} with \texttt{3}. \texttt{sed} produces no output on success; the effect is confirmed in Q16 and Q38, where \texttt{src/file1.txt} and \texttt{src/file2.txt} now read \texttt{3} instead of \texttt{three}.
+
+\paragraph{Q16.} Print the number of lines, words, and bytes for every *.txt file in src/.
+\begin{lstlisting}[language=bash,caption={Q16 evidence: \texttt{wc -l -w -c src/*.txt}},label={Listing:Q16}]
+$ wc -l -w -c src/*.txt
+ 1  4 15 src/file1.txt
+ 1  4 16 src/file2.txt
+ 2  8 31 total
+\end{lstlisting}
+\texttt{wc} with \texttt{-l -w -c} reports line, word, and byte counts (in that column order) for each matching file plus a totals row; the byte counts are one less than the pre-edit files because \texttt{three} (5 chars) was replaced with \texttt{3} (1 char) in Q15.
+
+\subsection{Part D: Permissions \& Ownership}
+\paragraph{Q17.} Make tmp/ readable, writable, and searchable only by the owner.
+\begin{lstlisting}[language=bash,caption={Q17 evidence: \texttt{chmod 700 tmp}},label={Listing:Q17}]
+$ chmod 700 tmp
+\end{lstlisting}
+Octal mode \texttt{700} sets read/write/execute (search, for a directory) for the owner and removes all permissions for group and others. \texttt{chmod} is silent on success.
+
+\paragraph{Q18.} Give group execute permission to src/lib recursively without touching others/owner bits.
+\begin{lstlisting}[language=bash,caption={Q18 evidence: \texttt{chmod -R g+x src/lib}},label={Listing:Q18}]
+$ chmod -R g+x src/lib
+\end{lstlisting}
+The symbolic mode \texttt{g+x} adds only the execute bit for the group class and \texttt{-R} applies it recursively to \texttt{src/lib} and everything under it, leaving owner and other permission bits untouched.
+
+\paragraph{Q19.} Show the numeric (octal) permissions of src/file2.txt.
+\begin{lstlisting}[language=bash,caption={Q19 evidence: \texttt{stat -c '\%a' src/file2.txt}},label={Listing:Q19}]
+$ stat -c '%a' src/file2.txt
+664
+\end{lstlisting}
+\texttt{stat -c '\%a'} formats \texttt{stat}'s output to print only the access-mode field as an octal number, here \texttt{664} (rw-rw-r--).
+
+\paragraph{Q20.} Make notes.md append-only for the owner via file attributes (if supported).
+\begin{lstlisting}[language=bash,caption={Q20 evidence: \texttt{sudo chattr +a notes.md}},label={Listing:Q20}]
+$ sudo chattr +a notes.md
+\end{lstlisting}
+The ext-family \texttt{a} (append-only) file attribute, set with \texttt{chattr +a}, restricts the file so it can only be opened for appending, not truncated or overwritten; changing this attribute requires elevated privileges, hence \texttt{sudo}. \texttt{chattr} produces no output on success, and support for this attribute depends on the underlying filesystem.
+
+\subsection{Part E: Links \& Find}
+\paragraph{Q21.} Verify whether link-to-file1 is a symlink and show its target path.
+\begin{lstlisting}[language=bash,caption={Q21 evidence: \texttt{[ -L link-to-file1 ] \&\& readlink link-to-file1}},label={Listing:Q21}]
+$ [ -L link-to-file1 ] && readlink link-to-file1
+src/file1.txt
+\end{lstlisting}
+\texttt{[ -L ... ]} tests specifically for a symbolic link (true here, since \texttt{link-to-file1} was created with \texttt{ln -s}); \texttt{readlink} then prints the link's stored target path.
+
+\paragraph{Q22.} Find all regular files under the current tree larger than 40 KiB.
+\begin{lstlisting}[language=bash,caption={Q22 evidence: \texttt{find . -type f -size +40k}},label={Listing:Q22}]
+$ find . -type f -size +40k
+./blob.bin
+\end{lstlisting}
+\texttt{-type f} restricts the search to regular files and \texttt{-size +40k} matches files larger than 40 KiB; \texttt{blob.bin} (48 KiB, created with \texttt{dd}) is the only match.
+
+\paragraph{Q23.} Find files modified in the last 10 minutes under tmp/ and print their sizes.
+\begin{lstlisting}[language=bash,caption={Q23 evidence: \texttt{find tmp -type f -mmin -10 -printf '\%p \%s bytes\textbackslash{}n'}},label={Listing:Q23}]
+$ find tmp -type f -mmin -10 -printf '%p %s bytes\n'
+\end{lstlisting}
+\texttt{-mmin -10} matches files whose content was modified fewer than 10 minutes ago, and \texttt{-printf} formats each match as its path (\texttt{\%p}) and size in bytes (\texttt{\%s}). \texttt{tmp/file1.txt} was copied there in Q3, but by the time this command ran later in the same working session more than ten minutes had elapsed, so the (correct) result is an empty list -- there is no file in \texttt{tmp/} younger than 10 minutes at this point in the transcript.
+
+\subsection{Part F: Processes \& Job Control}
+\paragraph{Q24.} Show your processes in a tree view.
+\begin{lstlisting}[language=bash,caption={Q24 evidence: \texttt{ps -u "\$USER" -f --forest}},label={Listing:Q24}]
+$ ps -u "$USER" -f --forest
+UID          PID    PPID  C STIME TTY          TIME CMD
+lima        1241    1147  0 14:54 ?        00:00:00 sshd: lima@pts/0
+lima        1295    1241  0 14:56 pts/0    00:00:00  \_ /bin/bash -l
+lima        1443    1295  0 16:17 pts/0    00:00:00      \_ script -q -f /home/lima.guest/problemset_commands_se
+lima        1444    1443  0 16:17 pts/1    00:00:00          \_ bash -i
+lima        1643    1444  0 17:46 pts/1    00:00:00              \_ ps -u lima -f --forest
+lima        1029       1  0 14:54 ?        00:00:00 /usr/lib/systemd/systemd --user
+lima        1030    1029  0 14:54 ?        00:00:00  \_ (sd-pam)
+\end{lstlisting}
+\texttt{-u "\$USER"} filters to the invoking user's own processes, \texttt{-f} gives the full-format listing, and \texttt{--forest} draws the parent/child ASCII tree -- here the SSH login shell spawning the \texttt{script} recording session, which in turn runs the interactive \texttt{bash} that executed this very \texttt{ps} command.
+
+\paragraph{Q25.} Start sleep 120 in the background and show its PID.
+\begin{lstlisting}[language=bash,caption={Q25 evidence: \texttt{sleep 120 \& echo \$!}},label={Listing:Q25}]
+$ sleep 120 & echo $!
+[1] 1644
+1644
+\end{lstlisting}
+The trailing \texttt{\&} backgrounds \texttt{sleep 120}; the shell reports the new background job number and PID (\texttt{[1] 1644}), and \texttt{\$!} holds the PID of the most recently backgrounded job, which \texttt{echo} then prints again explicitly.
+
+\paragraph{Q26.} Send a TERM signal to all sleep processes owned by you (don't use kill -9).
+\begin{lstlisting}[language=bash,caption={Q26 evidence: \texttt{pkill -TERM -u "\$USER" sleep}},label={Listing:Q26}]
+$ pkill -TERM -u "$USER" sleep
+[1]+  Done                    sleep 120
+\end{lstlisting}
+\texttt{pkill -TERM -u "\$USER" sleep} matches processes named \texttt{sleep} owned by the current user and sends the default, catchable \texttt{SIGTERM} (explicit here, never \texttt{SIGKILL}/\texttt{-9}); the shell's job-control notification confirms background job \texttt{[1]} (the \texttt{sleep 120} from Q25) terminated.
+
+\paragraph{Q27.} Show the top 5 processes by memory usage (one-shot, not interactive).
+\begin{lstlisting}[language=bash,caption={Q27 evidence: \texttt{ps -eo pid,user,\%mem,comm --sort=-\%mem | head -n 6}},label={Listing:Q27}]
+$ ps -eo pid,user,%mem,comm --sort=-%mem | head -n 6
+    PID USER     %MEM COMMAND
+    364 root      0.6 multipathd
+    864 root      0.5 unattended-upgr
+    803 root      0.3 udisksd
+      1 root      0.3 systemd
+    505 systemd+  0.3 systemd-resolve
+\end{lstlisting}
+\texttt{ps -eo ...} is a single, non-interactive snapshot (unlike \texttt{top}); \texttt{--sort=-\%mem} orders it by descending memory percentage, and piping to \texttt{head -n 6} keeps the header plus the top 5 rows.
+
+\subsection{Part G: Archiving \& Compression}
+\paragraph{Q28.} Create a gzipped tar archive src.tgz from src/ with relative paths.
+\begin{lstlisting}[language=bash,caption={Q28 evidence: \texttt{tar -czf src.tgz src/}},label={Listing:Q28}]
+$ tar -czf src.tgz src/
+\end{lstlisting}
+\texttt{-c} creates a new archive, \texttt{-z} pipes it through gzip, and \texttt{-f src.tgz} names the output file; invoking \texttt{tar} with the relative argument \texttt{src/} (not an absolute path) stores relative paths inside the archive, as confirmed by the listing in Q29.
+
+\paragraph{Q29.} List the contents of src.tgz without extracting.
+\begin{lstlisting}[language=bash,caption={Q29 evidence: \texttt{tar -tzf src.tgz}},label={Listing:Q29}]
+$ tar -tzf src.tgz
+src/
+src/lib/
+src/file1.txt
+src/file1.txt.bak
+src/file2.txt
+src/file2.txt.bak
+\end{lstlisting}
+\texttt{-t} lists the archive's table of contents (with \texttt{-z} for gzip decompression) instead of unpacking any files; the \texttt{.bak} files created by Q15's \texttt{sed -i.bak} are visible in the archive, and every path is stored relative to \texttt{src/}.
+
+\paragraph{Q30.} Extract only file2.txt from src.tgz into tmp/.
+\begin{lstlisting}[language=bash,caption={Q30 evidence: \texttt{tar -xzf src.tgz -C tmp --strip-components=1 src/file2.txt}},label={Listing:Q30}]
+$ tar -xzf src.tgz -C tmp --strip-components=1 src/file2.txt
+\end{lstlisting}
+\texttt{-x} extracts, \texttt{-C tmp} changes the extraction target directory to \texttt{tmp}, and naming \texttt{src/file2.txt} explicitly limits extraction to that one archive member; \texttt{--strip-components=1} drops the leading \texttt{src/} directory component so the file lands directly at \texttt{tmp/file2.txt} rather than \texttt{tmp/src/file2.txt}.
+
+\subsection{Part H: Networking \& System Info}
+\paragraph{Q31.} Show all listening TCP sockets with associated PIDs (no root assumptions).
+\begin{lstlisting}[language=bash,caption={Q31 evidence: \texttt{ss -ltnp}},label={Listing:Q31}]
+$ ss -ltnp
+State        Recv-Q       Send-Q             Local Address:Port             Peer Address:Port      Process
+LISTEN       0            4096               127.0.0.53%lo:53                    0.0.0.0:*
+LISTEN       0            4096                  127.0.0.54:53                    0.0.0.0:*
+LISTEN       0            4096                     0.0.0.0:22                    0.0.0.0:*
+LISTEN       0            4096                        [::]:22                       [::]:*
+\end{lstlisting}
+\texttt{ss -l} lists listening sockets, \texttt{-t} restricts to TCP, \texttt{-n} shows numeric addresses/ports, and \texttt{-p} attempts to attach the owning process; run as an unprivileged user, the process column is simply blank for sockets owned by other users rather than the command failing.
+
+\paragraph{Q32.} Print your default route (gateway) in a concise form.
+\begin{lstlisting}[language=bash,caption={Q32 evidence: \texttt{ip route show default}},label={Listing:Q32}]
+$ ip route show default
+default via 192.168.5.2 dev eth0 proto dhcp src 192.168.5.15 metric 200
+\end{lstlisting}
+\texttt{ip route show default} filters the routing table to only the default route, printing the gateway address, egress interface, and source address on one concise line.
+
+\paragraph{Q33.} Display kernel name, release, and machine architecture.
+\begin{lstlisting}[language=bash,caption={Q33 evidence: \texttt{uname -srm}},label={Listing:Q33}]
+$ uname -srm
+Linux 6.8.0-134-generic aarch64
+\end{lstlisting}
+\texttt{-s} prints the kernel name, \texttt{-r} the kernel release, and \texttt{-m} the machine hardware architecture, all on one line in that order.
+
+\paragraph{Q34.} Show the last 5 successful logins (or last sessions) on the system.
+\begin{lstlisting}[language=bash,caption={Q34 evidence: \texttt{last -n 5}},label={Listing:Q34}]
+$ last -n 5
+lima     pts/0        192.168.5.2      Mon Sep 28 14:56   still logged in
+reboot   system boot  6.8.0-134-generi Mon Sep 28 14:54   still running
+
+wtmp begins Mon Sep 28 14:54:54 2026
+\end{lstlisting}
+\texttt{last} reads the \texttt{wtmp} login database and \texttt{-n 5} limits the listing to the five most recent sessions; only one login and one boot record exist in this freshly provisioned sandbox, and \texttt{last} reports where its history begins.
+
+\subsection{Part I: Package \& Services (Debian/Ubuntu)}
+\paragraph{Q35.} Show the installed version of package coreutils.
+\begin{lstlisting}[language=bash,caption={Q35 evidence: \texttt{dpkg-query -W -f='\$\{Version\}\textbackslash{}n' coreutils}},label={Listing:Q35}]
+$ dpkg-query -W -f='${Version}\n' coreutils
+9.4-3ubuntu6.2
+\end{lstlisting}
+\texttt{dpkg-query -W} queries the installed-package database and the custom \texttt{-f} format string prints only the \texttt{Version} field of the named package, with nothing else.
+
+\paragraph{Q36.} Search available packages whose names contain ripgrep.
+\begin{lstlisting}[language=bash,caption={Q36 evidence: \texttt{apt-cache search --names-only ripgrep}},label={Listing:Q36}]
+$ apt-cache search --names-only ripgrep
+\end{lstlisting}
+\texttt{apt-cache search --names-only ripgrep} searches package names (not descriptions) in the local APT cache for the substring \texttt{ripgrep}; the empty result means no package named \texttt{ripgrep} is present in this sandbox's currently indexed package lists.
+
+\paragraph{Q37.} Check whether service cron is active and print its status line only.
+\begin{lstlisting}[language=bash,caption={Q37 evidence: \texttt{systemctl status cron --no-pager | grep 'Active:'}},label={Listing:Q37}]
+$ systemctl status cron --no-pager | grep 'Active:'
+     Active: active (running) since Mon 2026-09-28 14:54:58 UTC; 3h 10min ago
+\end{lstlisting}
+\texttt{systemctl status cron --no-pager} prints the full unit status without invoking a pager, and piping through \texttt{grep 'Active:'} isolates just the one line reporting the service's run state, confirming \texttt{cron} is active (running).
+
+\subsection{Part J: Bash \& Scripting}
+\paragraph{Q38.} Write a one-liner that loops over *.txt in src/ and prints: <file>: <contents>.
+\begin{lstlisting}[language=bash,caption={Q38 evidence: \texttt{for f in src/*.txt; do printf '\%s: \%s\textbackslash{}n' "\$f" "\$(cat "\$f")"; done}},label={Listing:Q38}]
+$ for f in src/*.txt; do printf '%s: %s\n' "$f" "$(cat "$f")"; done
+src/file1.txt: one two 3 four
+src/file2.txt: two 3 four five
+\end{lstlisting}
+The \texttt{for} loop iterates over every \texttt{*.txt} match in \texttt{src/}, and for each one \texttt{printf} emits the filename, a colon, and the file's contents (captured with \texttt{\$(cat "\$f")}); the \texttt{three}$\rightarrow$\texttt{3} substitution from Q15 is visible in both lines.
+
+\paragraph{Q39.} Write a command that exports CSV rows where dept == "CS" to cs.txt (exclude header).
+\begin{lstlisting}[language=bash,caption={Q39 evidence: \texttt{awk -F',' 'NR > 1 \&\& \$3 == "CS"' people.csv > cs.txt}},label={Listing:Q39}]
+$ awk -F',' 'NR > 1 && $3 == "CS"' people.csv > cs.txt
+\end{lstlisting}
+\texttt{-F','} sets the comma field separator; the condition \texttt{NR > 1 \&\& \$3 == "CS"} skips the header row and keeps only rows whose third field (department) is exactly \texttt{CS}, and the shell redirection \texttt{> cs.txt} writes the matching rows (Linus and Dennis) to \texttt{cs.txt}. \texttt{awk} produces no terminal output because everything is redirected to the file.
+
+\paragraph{Q40.} Create a variable X with value 42, print it, then remove it from the environment.
+\begin{lstlisting}[language=bash,caption={Q40 evidence: \texttt{export X=42; echo "\$X"; unset X}},label={Listing:Q40}]
+$ export X=42; echo "$X"; unset X
+42
+\end{lstlisting}
+\texttt{export X=42} creates and exports the shell variable, \texttt{echo "\$X"} prints its value (\texttt{42}), and \texttt{unset X} removes the variable from the environment entirely; no output follows the \texttt{unset} since the variable is simply gone.
+
+\section{Retrospective}
+\subsection{Outcome}
+All 40 problem-set items were completed and captured as live terminal
+evidence rather than described from memory. Two results are correctly empty
+and are called out explicitly rather than treated as failures: Q23
+(\texttt{find -mmin -10}) returned nothing because more real time than the
+10-minute window had elapsed between copying \texttt{tmp/file1.txt} in Q3 and
+running the search later in the same session, and Q36
+(\texttt{apt-cache search ripgrep}) returned nothing because the
+\texttt{ripgrep} package is not present in this sandbox's local package
+index. Both are legitimate, reproducible outcomes of the commands as
+written, not scripting errors.
+
+\subsection{Notes and Assumptions}
+\begin{itemize}
+\item Two independent terminal sessions were recorded with \texttt{script}: one for the environment setup (Section~\ref{Section:LinuxSetup}) and one for the 40 solution commands (Section~\ref{Section:LinuxSolutions}), executed back to back in the same \texttt{\textasciitilde/lx-test} directory.
+\item Q12's \texttt{tail -f} was intentionally interrupted with \texttt{Ctrl+C} once it had demonstrated following behavior, since \texttt{sys.log} is a static fixture file in this exercise and was not being appended to by another process.
+\item Q20's \texttt{chattr +a} depends on ext2/3/4-family filesystem support for extended attributes; the command was issued with \texttt{sudo} because changing this attribute requires elevated privileges.
+\end{itemize}
+

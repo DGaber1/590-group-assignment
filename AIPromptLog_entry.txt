@@ -1,0 +1,28 @@
+Suggested entry for devopsAIPromptLog.tex
+(paste under \section{Example Record}, adjusting wording/date as your group prefers)
+
+Date: 2026-09-28
+Tool and model: Claude (Anthropic), Cowork session
+Task: Draft the "Linux Commands" chapter (devopsLinuxCommands.tex) answering
+  the 40-item Linux Command Proficiency problem set, using two `script`-
+  recorded terminal sessions (environment setup and problem-set commands)
+  supplied by the group as the source of truth for commands and output.
+Inputs: The Linux Command Proficiency problem set PDF (40 questions, Parts
+  A-J); two sanitized terminal transcripts (setup_commands_session.txt,
+  problemset_commands_session.txt) captured on the course Linux sandbox
+  (lima-linuxclass); the group's Overleaf/LaTeX template
+  (2026F-SSW-590-DevOps_2.zip), including its document and chapter-naming
+  conventions.
+Output used: A new chapter file, devopsLinuxCommands.tex, mapping each of the
+  40 questions to the exact command executed and its captured terminal
+  output (reconstructed from the raw transcripts with a terminal emulator,
+  not retyped from memory), plus a one-paragraph explanation per command and
+  a short retrospective.
+Human review and corrections: [Deanna Gaber and Rifat Rahman Khan to fill in:
+  confirm every command/output pair matches the recorded sessions, confirm
+  the explanations are accurate, and add/adjust the Team Contributions
+  section to reflect actual individual work.]
+Unresolved assumptions: The chapter assumes the two provided transcripts are
+  the group's authoritative, unedited evidence; Q23 and Q36 are reported with
+  their genuinely empty output (a timing effect and an absent local package,
+  respectively) rather than being altered to appear non-empty.
