@@ -1,0 +1,170 @@
+\chapter{Project Proposal}
+\ChapterLabel{ProjectProposal}
+\index{project proposal}
+\index{DevSecOps}
+\index{DevSecOps!tool candidates}
+
+\section{Project Description}
+
+\subsection{Working Title}
+\textbf{StudyOps: A DevSecOps-Built Personal Academic Dashboard.}
+
+\subsection{Description}
+StudyOps is a small, self-hosted web application that gives a single place to
+track every course, assignment, exam, and study session for the semester,
+replacing a scattered mix of course syllabi, spreadsheets, and sticky notes.
+Functionally it is a three-tier application: a lightweight browser frontend,
+a REST API backend, and a relational database holding each course,
+assignment, and study-session record for the logged-in student. The
+application itself is intentionally simple -- the point of the project is
+the DevSecOps pipeline and environment built around it, not a complicated
+feature set -- but it is also something I would genuinely use for my own
+semester planning, which keeps me motivated to keep it running correctly
+rather than letting it become shelfware once the assignment is graded.
+
+The backend will be written in \textbf{C\# with ASP.NET Core}, a deliberate
+choice: it is one of the most common backend stacks in corporate/enterprise
+settings, and neither of us has hands-on background in it, so the project
+doubles as an opportunity to build that skill before graduation. The
+frontend is kept intentionally simple (plain HTML/JavaScript calling the
+API) so the new-to-us learning stays focused on the backend, data access,
+and DevSecOps pipeline rather than also picking up an unfamiliar frontend
+framework at the same time.
+
+Everything below is a first pass. The specific tool names are candidates we
+intend to evaluate, not final commitments; several categories list more than
+one option because part of the project is comparing them directly (see
+Section~\ref{Section:ToolComparison}).
+
+\subsection{Sample Tasks}
+At minimum, the finished application should support:
+\begin{itemize}
+\item Creating a course (name, term, credit hours).
+\item Adding an assignment or exam to a course with a due date and a priority/weight.
+\item Viewing a single ``what's due'' dashboard across all courses, sorted soonest-first.
+\item Marking an assignment complete, and logging a study session against a course.
+\item Receiving a generated weekly digest of everything due in the next 7 days (described further in Section~\ref{Section:Unique}).
+\end{itemize}
+
+\subsection{Candidate Toolchain}
+\begin{tabularx}{\linewidth}{L{3.0cm}L{3.6cm}Y}
+\caption{Candidate DevSecOps Toolchain\label{Table:ToolchainCandidates}}\\
+\toprule \textbf{Category} & \textbf{Candidate tool(s)} & \textbf{Notes}\\ \midrule
+Application stack & Backend: C\# / ASP.NET Core Web API. Frontend: plain HTML/JavaScript (kept simple on purpose) & Chosen for industry relevance in corporate/enterprise backends; neither of us has prior C\#/.NET background, so this is a deliberate skill-building choice.\\
+Data access & Entity Framework Core (ORM) against PostgreSQL & Keeps schema changes (migrations) version-controlled alongside the C\# code.\\
+Source control & GitHub & Private repository, branch protection on \texttt{main}, pull-request review required before merge.\\
+CI/CD pipeline & GitHub Actions; compared against GitLab CI & Build, test, scan, and deploy on every push with the \texttt{dotnet} CLI; the second tool is the ``comparable tool'' pairing for the pipeline layer.\\
+Containerization & Docker, built from the official Microsoft ASP.NET Core runtime image, with Docker Compose for local multi-container development (API + database) & Same image is promoted from local dev through the pipeline to each hosting environment.\\
+Container orchestration (stretch) & Lightweight Kubernetes (k3s), compared against plain Docker Compose on a single host & Only attempted if time allows after the core pipeline is working.\\
+Infrastructure as Code & Terraform; compared against Pulumi if time allows & Provisions the compute, network, and database resources in each cloud environment from version-controlled code.\\
+Hosting environment & AWS (EC2/ECS + RDS) versus DigitalOcean (Droplets/App Platform + Managed Database) & The project's primary two-environment comparison; same container image deployed to both. Both platforms run containerized .NET apps without issue.\\
+Database & PostgreSQL, run as a managed service on each platform (RDS vs.\ DigitalOcean Managed Databases) & Keeps the comparison consistent through the data layer.\\
+Automated testing & xUnit for unit tests, plus a small integration-test suite run with \texttt{dotnet test} against the live API in the pipeline & Tests gate the deploy step; a failing test blocks release.\\
+Security scanning & Dependabot or Snyk (dependency/NuGet-package vulnerabilities), Trivy (container-image scanning), gitleaks or truffleHog (committed-secret scanning) & Run as pipeline gates, the ``Sec'' in DevSecOps for this project.\\
+Secrets management & Pipeline-native encrypted secrets (GitHub Actions secrets) and per-environment \texttt{.env}/\texttt{appsettings} files, never committed & HashiCorp Vault considered as a stretch goal.\\
+Monitoring / observability & CloudWatch (AWS) versus DigitalOcean Monitoring (DO), or a self-hosted Prometheus + Grafana stack for a platform-neutral view & Feeds the operational dashboard in Section~\ref{Section:Dashboard}.\\ \bottomrule
+\end{tabularx}
+
+\section{Planned Tool Comparison}
+\label{Section:ToolComparison}
+The project's primary ``two comparable tools'' comparison is at the hosting-environment
+layer: the identical container image is deployed to both \textbf{AWS} and
+\textbf{DigitalOcean}, and the two are compared directly across:
+\begin{itemize}
+\item \textbf{Security} -- identity and access model (IAM vs.\ DigitalOcean's simpler access model), network/firewall configuration, and how cleanly each platform keeps secrets out of version control.
+\item \textbf{Development experience} -- CLI/console ergonomics, documentation quality, and time to a first working deploy.
+\item \textbf{Hosting} -- pricing model, free-tier limits, and managed-database setup effort.
+\item \textbf{Monitoring} -- built-in dashboards, alerting, and log retention.
+\item \textbf{Testing} -- how (and where) the pipeline's test and security-scan stages differ, if at all, per target environment.
+\item \textbf{Operations} -- deploy frequency achievable in practice, rollback process, and general day-2 operations burden.
+\end{itemize}
+If time allows, a secondary comparison at the CI/CD layer (GitHub Actions vs.\
+GitLab CI) will be attempted using the same application and the same AWS
+target, to isolate the pipeline tool's effect from the hosting environment's.
+
+\section{Environment}
+The project will be built using a real cloud environment rather than a
+purely local (``homebrew'') setup, specifically because comparing AWS and
+DigitalOcean is the centerpiece of the comparison plan above. Both platforms
+offer a free or low-cost tier sufficient for a single small application, and
+local Docker Compose remains the development and first-test environment
+before anything is deployed.
+
+\section{Operational Dashboard (Planned)}
+\label{Section:Dashboard}
+One operational dashboard per hosting environment (or a single unified
+dashboard if a self-hosted Prometheus/Grafana stack is used instead) should
+reflect, at minimum:
+\begin{itemize}
+\item Deployment frequency and lead time (time from commit to live).
+\item Build/test/scan pass-fail history for recent pipeline runs.
+\item Current application health (uptime / health-check status).
+\item Error rate and response latency for the API.
+\item The commit SHA and trigger (push, scheduled job, manual) of the most recent deploy.
+\end{itemize}
+
+\section{Preliminary SWOT (First Pass)}
+These SWOT charts are an early, intentionally rough first pass on the two
+hosting candidates, to be refined once hands-on work begins; they are
+included now to show the comparison is already being thought through rather
+than deferred.
+
+\subsection{AWS}
+\begin{tabularx}{\linewidth}{L{3.2cm}Y}
+\toprule \textbf{Category} & \textbf{Notes}\\ \midrule
+Strengths & Broadest service catalog and the cloud platform most referenced in job postings; mature IAM and security tooling; a generous, well-documented free tier for small EC2/RDS instances.\\
+Weaknesses & Steeper learning curve; pricing and service sprawl make cost estimation harder for a single small app; the console is dense for a first-time user.\\
+Opportunities & Direct experience with the most commonly requested cloud skill in corporate job postings; room to later add managed CI (CodePipeline) or a serverless function (Lambda) for the weekly-digest feature.\\
+Threats & Easy to accidentally leave a billable resource running past the free tier; a misconfigured IAM policy or security group is a realistic risk on a first AWS project.\\ \bottomrule
+\end{tabularx}
+
+\subsection{DigitalOcean}
+\begin{tabularx}{\linewidth}{L{3.2cm}Y}
+\toprule \textbf{Category} & \textbf{Notes}\\ \midrule
+Strengths & Simple, flat pricing and a small, approachable product set (Droplets, App Platform, Managed Databases); fast path to a first working deploy; documentation aimed at smaller projects.\\
+Weaknesses & Smaller service catalog, so some AWS comparisons (fine-grained IAM, serverless) have no direct equivalent; less name recognition on a resume.\\
+Opportunities & A faster path to a working deployment frees up more project time for the DevSecOps pipeline itself; App Platform's built-in build-from-Git-push is a natural comparison point against a hand-built GitHub Actions pipeline.\\
+Threats & Smaller platform means fewer community answers for an obscure error; less corporate adoption than AWS, so the experience is somewhat less directly transferable to a specific employer's stack.\\ \bottomrule
+\end{tabularx}
+
+\section{Something Unique}
+\label{Section:Unique}
+\subsection{Weekly Deadline Digest}
+A scheduled pipeline job (a GitHub Actions cron trigger, or a small
+serverless function on a timer) queries StudyOps's own database once a week
+and sends a short digest -- everything due in the next 7 days -- to a
+personal email address or a Discord/Slack webhook. This turns the
+``deploy and monitor'' lesson into something with a direct personal payoff,
+and it is also a deliberately different trigger model (scheduled,
+event-driven automation) from the push-triggered pipeline used for deploys,
+so the project demonstrates more than one automation pattern.
+
+\subsection{Live Pipeline-Status Badge}
+A second, smaller unique touch: a public, read-only ``last deploy:
+passed/failed'' status badge in the project's README, the same convention
+many open-source projects use, adapted here to a personal project's own
+pipeline.
+
+\section{Expectations and Rubric}
+The project will be evaluated on:
+\begin{itemize}
+\item The selected tool, tools, or environment.
+\item Building a sample working application.
+\item Using specific DevOps tools to build a simple project.
+\item Ideally, using two comparable tools to build the same project and drawing comparisons across security, development, hosting, monitoring, testing, and operations.
+\item Using a real environment to build the project -- AWS, DigitalOcean, or a homebrew setup (containers, microservices, GitHub, etc.).
+\item Constructing a dashboard reflecting operational aspects.
+\item Constructing a modified Strengths/Weaknesses/Opportunities/Threats (SWOT) chart for each tool.
+\item Proposing something unique.
+\end{itemize}
+
+\begin{devopsNote}[Status]
+This chapter is a proposal. Tool names, the specific comparison pairs, and
+the unique-feature ideas above are the group's current best thinking and are
+expected to be refined (or changed outright) once implementation starts;
+later chapters will record what was actually built, with evidence, the same
+way \ChapterRef{LinuxCommands} does for the problem-set work. The backend
+language/framework (C\#/ASP.NET Core) is a firmer commitment than the other
+candidates, since it was chosen specifically to build skills neither of us
+currently has; the hosting, CI/CD, and IaC tool pairings remain open.
+\end{devopsNote}
