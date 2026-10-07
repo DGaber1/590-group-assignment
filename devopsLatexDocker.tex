@@ -1,0 +1,99 @@
+\chapter{LaTeX Docker}
+\ChapterLabel{LatexDocker}
+\index{LaTeX}
+\index{Docker}
+\index{Docker!TeX Live}
+\index{Overleaf}
+
+\section{Overview}
+Overleaf compiles LaTeX projects on the server using a TeX Live installation.
+This chapter reproduces that idea locally: a Docker container that bundles TeX
+Live and compiles a simple LaTeX document into a PDF, so the build is the same
+on every machine and requires no local TeX installation.
+
+\subsection{Team Contributions}
+\begin{tabularx}{\linewidth}{L{4.0cm}Y}
+\toprule \textbf{Member} & \textbf{Contribution}\\ \midrule
+Rifat Rahman Khan (RRK) & Wrote this chapter: designed the TeX Live Dockerfile, the sample LaTeX document, and the compile helper script.\\ \bottomrule
+\end{tabularx}
+
+\section{Project Layout}
+\begin{minted}[fontsize=\small,frame=lines]{text}
+latex-docker/
+|-- Dockerfile
+|-- hello.tex
+|-- compile.sh
+`-- output/          (created at run time; holds hello.pdf)
+\end{minted}
+
+\section{The LaTeX Source}
+\begin{listing}[H]
+\inputminted[fontsize=\small,breaklines,frame=lines,linenos]{latex}{latex-docker/hello.tex}
+\caption{\texttt{hello.tex}: the document compiled by the container.}
+\end{listing}
+
+\section{The Dockerfile}
+The image is based on Debian slim and installs a minimal TeX Live selection
+(\texttt{texlive-latex-base}, \texttt{texlive-latex-recommended},
+\texttt{texlive-latex-extra}, \texttt{texlive-fonts-recommended}) plus
+\texttt{latexmk}, the same build driver Overleaf uses. The full
+\texttt{texlive-full} package is much larger (several GB) and is unnecessary for
+a simple document; swap it in if the document needs additional packages.
+
+\begin{listing}[H]
+\inputminted[fontsize=\small,breaklines,frame=lines,linenos]{docker}{latex-docker/Dockerfile}
+\caption{\texttt{Dockerfile} for the TeX Live compile container.}
+\end{listing}
+
+Key design points:
+\begin{itemize}
+  \item \texttt{DEBIAN\_FRONTEND=noninteractive} prevents \texttt{apt} from
+        prompting during the build.
+  \item \texttt{--no-install-recommends} and removing \texttt{/var/lib/apt/lists}
+        keep the image small.
+  \item The working directory \texttt{/work} is meant to be a bind mount, so the
+        source and resulting PDF live on the host rather than inside the container.
+  \item \texttt{ENTRYPOINT} runs \texttt{latexmk}, so extra arguments (such as a
+        different file name) can be passed to \texttt{docker run}.
+\end{itemize}
+
+\section{Build and Run}
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+# Build the image
+docker build -t latex-docker .
+
+# Compile hello.tex; the current directory is mounted at /work
+docker run --rm -v "$PWD":/work latex-docker hello.tex
+
+# The PDF is now on the host
+ls -l hello.pdf
+\end{minted}
+\caption{Building the image and compiling the document.}
+\end{listing}
+
+A helper script wraps the same steps:
+
+\begin{listing}[H]
+\inputminted[fontsize=\small,breaklines,frame=lines]{bash}{latex-docker/compile.sh}
+\caption{\texttt{compile.sh}: build-and-compile helper.}
+\end{listing}
+
+\section{Compiling This Report}
+Because the Dockerfile uses \texttt{latexmk} with \texttt{-shell-escape}, it can
+also build documents that use the \texttt{minted} package, such as this report.
+\texttt{minted} additionally needs Python's Pygments, which the Dockerfile
+installs. To compile the whole report:
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+docker run --rm -v "$PWD":/work latex-docker devopsAssignment.tex
+\end{minted}
+\caption{Compiling a minted-based document.}
+\end{listing}
+
+\section{Retrospective}
+Running the compiler in a container gives a reproducible build: the same TeX
+Live version produces the same PDF regardless of the host operating system.
+The tradeoff is image size and build time on first use, which is why the image
+installs only the packages the document needs.

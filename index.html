@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Color Buttons App</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      transition: background-color 0.3s ease;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Click a Button to Change Background</h1>
+
+  <button id="blueBtn">Blue</button>
+  <button id="redBtn">Red</button>
+
+  <script>
+    // One ColorButton wraps one <button> element and the color it applies.
+    class ColorButton {
+      #button;
+      #color;
+      #target;
+
+      constructor(buttonId, color, target = document.body) {
+        this.#button = document.getElementById(buttonId);
+        this.#color = color;
+        this.#target = target;
+      }
+
+      get color() {
+        return this.#color;
+      }
+
+      apply() {
+        this.#target.style.backgroundColor = this.#color;
+      }
+
+      bind() {
+        this.#button.addEventListener("click", () => this.apply());
+      }
+    }
+
+    // ColorButtonApp owns the set of ColorButtons and wires them up.
+    class ColorButtonApp {
+      #buttons = [];
+
+      constructor(configs) {
+        this.#buttons = configs.map(c => new ColorButton(c.id, c.color));
+      }
+
+      start() {
+        this.#buttons.forEach(button => button.bind());
+      }
+    }
+
+    new ColorButtonApp([
+      { id: "blueBtn", color: "blue" },
+      { id: "redBtn",  color: "red"  }
+    ]).start();
+  </script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+\chapter{Digital Ocean Docker Deployment}
+\ChapterLabel{DigitalOceanDocker}
+\index{Digital Ocean}
+\index{Docker}
+\index{Docker!deployment}
+\index{UML class diagram}
+
+\section{Overview}
+This chapter records how a Digital Ocean Droplet was created, how Docker was
+installed on it, and how a small Node.js website (the \emph{Color Buttons App})
+was containerized and deployed. It also documents the refactor of the website's
+JavaScript from inline event handlers to a class-based design, with a UML class
+diagram of the updated design.
+
+The deployed website is available at:
+\begin{itemize}
+  \item \url{http://144.126.196.140} (Droplet public IPv4 address)
+\end{itemize}
+
+\subsection{Team Contributions}
+\begin{tabularx}{\linewidth}{L{4.0cm}Y}
+\toprule \textbf{Member} & \textbf{Contribution}\\ \midrule
+Rifat Rahman Khan (RRK) & Installed and ran everything: created the Droplet, installed Docker, and deployed the website, capturing the terminal sessions used as evidence.\\
+Deanna Gaber (DMG) & Created the documentation for this report: wrote this chapter, the class-based JavaScript refactor, and the UML class diagram.\\ \bottomrule
+\end{tabularx}
+
+\section{Droplet Creation}
+The Droplet was created in the Digital Ocean control panel with the following
+configuration (confirmed by the console screenshot in
+Figure~\ref{fig:droplet}):
+
+\begin{itemize}
+  \item Name: \texttt{ubuntu-s-1vcpu-512mb-10gb-lon1}
+  \item Image: Ubuntu 24.04 (LTS) x64
+  \item Plan: 1 vCPU, 512 MB RAM, 10 GB disk (\$4.00/month)
+  \item Region: London (LON1), project \texttt{first-project}
+  \item Authentication: SSH key (\texttt{id\_ed25519})
+  \item Public IPv4 address: \texttt{144.126.196.140}
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/droplet-overview.png}
+  \caption{Digital Ocean console showing the active Droplet and its public IPv4 address.}
+  \label{fig:droplet}
+\end{figure}
+
+\section{Installing Docker on the Droplet}
+After connecting to the Droplet over SSH as \texttt{root}, Docker was installed
+from Ubuntu's package repositories and verified with the \texttt{hello-world}
+image. The terminal session was recorded with \texttt{script}.
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+# Connect to the Droplet
+ssh -i ~/.ssh/id_ed25519 root@144.126.196.140
+
+# Install Docker (Ubuntu 24.04 package: docker.io)
+apt update
+apt install docker.io -y
+systemctl enable --now docker
+
+# Verify the installation
+docker --version
+docker run hello-world
+\end{minted}
+\caption{Installing and verifying Docker on the Droplet.}
+\end{listing}
+
+\noindent The resulting version was \texttt{Docker version 29.1.3, build
+29.1.3-0ubuntu3\textasciitilde 24.04.2}, and \texttt{hello-world} printed
+``Hello from Docker!'', confirming the daemon works.
+
+\section{Smoke Test with nginx}
+Before deploying our own application, a stock nginx container was started on
+port 80 to prove the Droplet was reachable from the internet. It was then
+stopped and removed so the port could be reused.
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+docker run -d --name website -p 80:80 nginx
+docker ps
+docker stop website
+docker rm website
+docker ps
+\end{minted}
+\caption{nginx smoke test: start, verify, stop, and remove.}
+\end{listing}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/nginx-welcome.png}
+  \caption{The nginx welcome page served from \url{http://144.126.196.140}.}
+  \label{fig:nginx}
+\end{figure}
+
+\section{Deploying the Color Buttons App}
+The application consists of a small Node.js server (\texttt{server.js}), a
+\texttt{package.json}, a static \texttt{public/} directory containing
+\texttt{index.html}, and a \texttt{Dockerfile}.
+
+\subsection{Dockerfile}
+\begin{listing}[H]
+\inputminted[fontsize=\small,breaklines,frame=lines]{docker}{color-buttons-app/Dockerfile}
+\caption{Dockerfile for the Color Buttons App.}
+\end{listing}
+
+\subsection{Copy, Build, and Run}
+The project directory was copied from the local machine to the Droplet with
+\texttt{scp}, then built into an image and run as a detached container with the
+container's port 3000 published on the Droplet's port 80.
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+# On the local machine: copy the app to the Droplet
+scp -i ~/.ssh/id_ed25519 -r color-buttons-app root@144.126.196.140:/root/
+
+# On the Droplet
+ssh -i ~/.ssh/id_ed25519 root@144.126.196.140
+cd /root/color-buttons-app
+docker build -t color-buttons-app .
+docker run -d --name color-buttons-app -p 80:3000 color-buttons-app
+
+# Verify
+docker ps
+curl http://localhost
+\end{minted}
+\caption{Commands used to deploy the application.}
+\end{listing}
+
+The build succeeded (\texttt{Successfully tagged color-buttons-app:latest}),
+\texttt{docker ps} showed the container \texttt{Up} with
+\texttt{0.0.0.0:80->3000/tcp}, and \texttt{curl http://localhost} returned the
+page's HTML.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/color-buttons.png}
+  \caption{The deployed Color Buttons App at \url{http://144.126.196.140}.}
+  \label{fig:buttons}
+\end{figure}
+
+\subsection{Environment Checks}
+The following commands were also run to record the environment.
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+cat /etc/os-release   # Ubuntu 24.04.5 LTS (Noble Numbat)
+ufw status            # Status: inactive
+\end{minted}
+\caption{Environment checks.}
+\end{listing}
+
+\noindent The firewall (\texttt{ufw}) was \emph{inactive} for this exercise, so
+port 80 was reachable without further rules. A production deployment should
+enable \texttt{ufw} (allowing only SSH and HTTP/HTTPS) and serve the site over
+HTTPS; the browser currently labels the site ``Not Secure'' because it uses
+plain HTTP.
+
+\section{Class-Based JavaScript Refactor}
+The original page registered two anonymous arrow functions directly on the
+\texttt{blueBtn} and \texttt{redBtn} elements, duplicating the same logic twice.
+The updated \texttt{public/index.html} replaces this with two classes:
+
+\begin{itemize}
+  \item \texttt{ColorButton} wraps a single \texttt{<button>} element and the
+        color it applies. It exposes \texttt{apply()} to set the background color and
+        \texttt{bind()} to attach the click listener.
+  \item \texttt{ColorButtonApp} owns a collection of \texttt{ColorButton}
+        objects, builds them from a configuration list, and starts them with
+        \texttt{start()}.
+\end{itemize}
+
+Adding a new color now requires only one new entry in the configuration list
+rather than new copy-pasted handler code.
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines,linenos]{javascript}
+class ColorButton {
+  #button;
+  #color;
+  #target;
+
+  constructor(buttonId, color, target = document.body) {
+    this.#button = document.getElementById(buttonId);
+    this.#color = color;
+    this.#target = target;
+  }
+
+  get color() {
+    return this.#color;
+  }
+
+  apply() {
+    this.#target.style.backgroundColor = this.#color;
+  }
+
+  bind() {
+    this.#button.addEventListener("click", () => this.apply());
+  }
+}
+
+class ColorButtonApp {
+  #buttons = [];
+
+  constructor(configs) {
+    this.#buttons = configs.map(c => new ColorButton(c.id, c.color));
+  }
+
+  start() {
+    this.#buttons.forEach(button => button.bind());
+  }
+}
+
+new ColorButtonApp([
+  { id: "blueBtn", color: "blue" },
+  { id: "redBtn",  color: "red"  }
+]).start();
+\end{minted}
+\caption{Class-based JavaScript in \texttt{public/index.html}.}
+\end{listing}
+
+\subsection{Redeploying the Updated Site}
+After editing \texttt{index.html}, the container image must be rebuilt and the
+old container replaced:
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small,breaklines,frame=lines]{bash}
+# Copy the updated page to the Droplet
+scp -i ~/.ssh/id_ed25519 color-buttons-app/public/index.html \
+    root@144.126.196.140:/root/color-buttons-app/public/
+
+# Rebuild the image and replace the running container
+ssh -i ~/.ssh/id_ed25519 root@144.126.196.140 '
+  cd /root/color-buttons-app &&
+  docker build -t color-buttons-app . &&
+  docker stop color-buttons-app &&
+  docker rm color-buttons-app &&
+  docker run -d --name color-buttons-app -p 80:3000 color-buttons-app'
+\end{minted}
+\caption{Redeploying after the class-based change.}
+\end{listing}
+
+\subsection{UML Class Diagram}
+Figure~\ref{fig:uml} shows the updated design. \texttt{ColorButtonApp} is
+composed of one or more \texttt{ColorButton} objects, and each
+\texttt{ColorButton} depends on the browser's \texttt{HTMLElement} (the button
+and the target element whose background changes). Private members are marked
+with \texttt{-} and public members with \texttt{+}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  class/.style={rectangle split, rectangle split parts=3, draw, thick,
+                text width=6.4cm, align=left, fill=gray!8},
+  ext/.style={rectangle split, rectangle split parts=1, draw, thick,
+              text width=3.2cm, align=center, fill=blue!6}
+]
+  \node[class] (app) at (0,0) {
+    \textbf{\hfill ColorButtonApp \hfill\null}
+    \nodepart{second}
+    -\,buttons: ColorButton[]
+    \nodepart{third}
+    +\,constructor(configs: Config[])\\
+    +\,start(): void
+  };
+  \node[class] (btn) at (0,-4.6) {
+    \textbf{\hfill ColorButton \hfill\null}
+    \nodepart{second}
+    -\,button: HTMLElement\\
+    -\,color: string\\
+    -\,target: HTMLElement
+    \nodepart{third}
+    +\,constructor(buttonId, color, target)\\
+    +\,color: string \{get\}\\
+    +\,apply(): void\\
+    +\,bind(): void
+  };
+  \node[ext] (el) at (7,-4.6) {\textbf{HTMLElement}\\{\scriptsize (browser DOM)}};
+
+  % composition: App owns 1..* ColorButton
+  \draw[thick] (app.south) -- node[right,pos=.45]{\scriptsize 1..*} (btn.north);
+  \node[draw,fill=black,diamond,inner sep=2pt] at ($(app.south)+(0,-0.15)$) {};
+  % dependency
+  \draw[thick,dashed,-{Stealth}] (btn.east) -- node[above]{\scriptsize uses} (el.west);
+\end{tikzpicture}
+\caption{UML class diagram of the class-based Color Buttons design.}
+\label{fig:uml}
+\end{figure}
+
+\section{Retrospective}
+The Droplet, Docker installation, nginx smoke test, and application
+deployment all worked on the first attempt. Two follow-ups are worth noting:
+the firewall should be enabled and HTTPS added before this is used beyond a
+class exercise, and Docker's legacy builder printed a deprecation warning
+(installing \texttt{docker-buildx} would remove it).
